@@ -1,0 +1,42 @@
+name: Grade
+
+on:
+  workflow_dispatch:
+    inputs:
+      repository:
+        description: The student's repository, as owner/name
+        required: true
+      ref:
+        description: The commit or branch to mark
+        required: true
+        default: main
+
+jobs:
+  grade:
+    runs-on: ubuntu-latest
+    steps:
+      # The tests. This repository is the one being run, so this is a plain
+      # checkout of ourselves.
+      - uses: actions/checkout@v4
+
+      # The student's code, into a subdirectory so it cannot overwrite a test.
+      - uses: actions/checkout@v4
+        with:
+          repository: ${{ inputs.repository }}
+          ref: ${{ inputs.ref }}
+          path: student
+          # Needed even for public repositories: the default token is scoped to
+          # this repository only.
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - run: pip install pytest
+
+      # The tests import from the student's directory. Anything non-zero here
+      # is what the portal shows as "Neprošlo".
+      - run: python -m pytest tests -v
+        env:
+          PYTHONPATH: student
